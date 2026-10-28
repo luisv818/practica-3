@@ -6,8 +6,8 @@
 
 #define NUM_CIUDADES 39
 #define MAX_PASOS 50
-#define TAM_POBLACION 20
-#define MAX_GENERACIONES 20
+#define TAM_POBLACION 5
+#define MAX_GENERACIONES 1000
 #define TASA_CRUCE 0.8
 #define TASA_MUTACION 0.15
 #define PENALIZACION_SIN_SALIDA 10000
@@ -209,6 +209,39 @@ void mutar(Individuo *ind, int destino) {
     }
 }
 
+
+void eliminar_ciclos(Individuo *ind, int destino) {
+    int i = 0;
+    while (i < ind->longitud) {
+        int ultima = i;
+        for (int j = ind->longitud - 1; j > i; j--) {
+            if (ind->camino[j] == ind->camino[i]) {
+                ultima = j;
+                break;
+            }
+        }
+        if (ultima != i) {
+            int saltos = ultima - i;
+            for (int k = ultima; k < ind->longitud; k++) {
+                ind->camino[k - saltos] = ind->camino[k];
+            }
+            ind->longitud -= saltos;
+        }
+        i++;
+    }
+
+    int actual = ind->camino[ind->longitud - 1];
+        Individuo subcamino;
+        generar_camino_aleatorio(&subcamino, actual, destino);
+
+        for (int i = 1; i < subcamino.longitud; i++) {
+            if (ind->longitud < MAX_PASOS) {
+                ind->camino[ind->longitud++] = subcamino.camino[i];
+            }
+        }
+}
+
+
 int main() {
     srand((unsigned int)time(NULL));
     inicializar_grafo();
@@ -258,6 +291,9 @@ int main() {
             mutar(&h1, destino);
             mutar(&h2, destino);
 
+            eliminar_ciclos(&h1, destino);   //nuevo
+            eliminar_ciclos(&h2, destino);   //nuevo
+
             evaluar_individuo(&h1, destino);
             evaluar_individuo(&h2, destino);
 
@@ -272,8 +308,16 @@ int main() {
             poblacion[i] = nueva_poblacion[i];
         }
 
-        if ((gen + 1) % 50 == 0 || gen == 0) {
+        if ((gen + 1) % 100 == 0 || gen == 0) {
             printf("Generacion %d - Mejor Distancia: %d Km\n", gen + 1, mejor_absoluto.distancia_total);
+            printf("Ruta: ");
+            for (int i = 0; i < mejor_absoluto.longitud; i++) {
+                printf("%s", NOMBRES_CIUDADES[mejor_absoluto.camino[i]]);
+                if (i < mejor_absoluto.longitud - 1) {
+                    printf(" -> ");
+                }
+            }
+            printf("\n");
         }
     }
 
