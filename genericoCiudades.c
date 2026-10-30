@@ -246,14 +246,22 @@ int main() {
     srand((unsigned int)time(NULL));
     inicializar_grafo();
 
-    // DEFINIR CIUDAD ORIGEN Y DESTINO
-    // Ejemplo: 0 = Tijuana, 34 = Chihuahua (o 15 = Cabo San Lucas)
     int origen = 0;   // Tijuana
     int destino = 34; // Chihuahua
 
     printf("=== ALGORITMO GENETICO: RUTA DE CARRETERAS ===\n");
     printf("Origen: %s\n", NOMBRES_CIUDADES[origen]);
     printf("Destino: %s\n\n", NOMBRES_CIUDADES[destino]);
+
+    // Abrir archivo para exportar la historia evolutiva a Python
+    FILE *f_historia = fopen("historia_evolutiva.txt", "w");
+    if (f_historia == NULL) {
+        printf("Error al crear historia_evolutiva.txt\n");
+        return 1;
+    }
+
+    // Guardar origen y destino en la cabecera
+    fprintf(f_historia, "ORIGEN:%d|DESTINO:%d\n", origen, destino);
 
     Individuo poblacion[TAM_POBLACION];
     Individuo nueva_poblacion[TAM_POBLACION];
@@ -280,6 +288,17 @@ int main() {
             mejor_absoluto = poblacion[idx_mejor_gen];
         }
 
+        // Exportar datos de esta generación al archivo
+        bool llego = (mejor_absoluto.camino[mejor_absoluto.longitud - 1] == destino);
+        fprintf(f_historia, "GEN:%d|LLEGO:%d|PASOS:%d|KM:%d|CAMINO:", 
+                gen + 1, llego ? 1 : 0, mejor_absoluto.longitud, mejor_absoluto.distancia_total);
+
+        for (int k = 0; k < mejor_absoluto.longitud; k++) {
+            fprintf(f_historia, "%d", mejor_absoluto.camino[k]);
+            if (k < mejor_absoluto.longitud - 1) fprintf(f_historia, ",");
+        }
+        fprintf(f_historia, "\n");
+
         // Crear nueva generación
         for (int i = 0; i < TAM_POBLACION; i += 2) {
             Individuo p1 = seleccion_torneo(poblacion, 3);
@@ -291,8 +310,8 @@ int main() {
             mutar(&h1, destino);
             mutar(&h2, destino);
 
-            eliminar_ciclos(&h1, destino);   //nuevo
-            eliminar_ciclos(&h2, destino);   //nuevo
+            eliminar_ciclos(&h1, destino);
+            eliminar_ciclos(&h2, destino);
 
             evaluar_individuo(&h1, destino);
             evaluar_individuo(&h2, destino);
@@ -303,33 +322,17 @@ int main() {
             }
         }
 
-        // Copiar nueva población
         for (int i = 0; i < TAM_POBLACION; i++) {
             poblacion[i] = nueva_poblacion[i];
         }
 
         if ((gen + 1) % 100 == 0 || gen == 0) {
             printf("Generacion %d - Mejor Distancia: %d Km\n", gen + 1, mejor_absoluto.distancia_total);
-            printf("Ruta: ");
-            for (int i = 0; i < mejor_absoluto.longitud; i++) {
-                printf("%s", NOMBRES_CIUDADES[mejor_absoluto.camino[i]]);
-                if (i < mejor_absoluto.longitud - 1) {
-                    printf(" -> ");
-                }
-            }
-            printf("\n");
         }
     }
 
-    // 3. Mostrar Resultados Finales
-    printf("\n================ RESULTADO OPTIMO ================\n");
-    printf("Distancia Total: %d Km\n", mejor_absoluto.distancia_total);
-    printf("Ruta Encontrada (%d ciudades):\n", mejor_absoluto.longitud);
-
-    for (int i = 0; i < mejor_absoluto.longitud; i++) {
-        printf(" -> %s", NOMBRES_CIUDADES[mejor_absoluto.camino[i]]);
-    }
-    printf("\n==================================================\n");
+    fclose(f_historia);
+    printf("\n[+] Historia evolutiva guardada en 'historia_evolutiva.txt'\n");
 
     return 0;
 }
