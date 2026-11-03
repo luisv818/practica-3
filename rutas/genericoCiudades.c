@@ -326,7 +326,7 @@ int main() {
             poblacion[i] = nueva_poblacion[i];
         }
 
-        if ((gen + 1) % 100 == 0 || gen == 0) {
+        if ((gen + 1) % 5 == 0 || gen == 0) {
             printf("Generacion %d - Mejor Distancia: %d Km\n", gen + 1, mejor_absoluto.distancia_total);
         }
     }

@@ -9,11 +9,13 @@
 #define N 150                       // El laberinto es de 150 x 150
 #define NUM_CELDAS (N * N)          // Cada celda libre 
 #define MAX_PASOS 3000
-#define TAM_POBLACION 15
-#define MAX_GENERACIONES 10000
-#define TASA_CRUCE 0.8
+#define TAM_POBLACION 20
+#define MAX_GENERACIONES 1000
+#define TASA_CRUCE 0.7
 #define TASA_MUTACION 0.3
 #define PENALIZACION_SIN_SALIDA 10000
+#define MAX_RETROCESOS 100
+#define GEN_ESTANCADO 300  
  
 // Laberinto leido del CSV: 1 = pared, 0 = camino libre
 int laberinto[N][N]; 
@@ -24,10 +26,11 @@ typedef struct {
     int longitud;          // Cantidad de ciudades en la ruta
     int distancia_total;   // Distancia acumulada en Km
     double fitness;        // Valor de aptitud
+    int choques;          // Contador de choques con paredes
 } Individuo;
 
  
-// LEER EL LABERINTO DESDE EL CSV 
+// Leer laberinto del CSV 
 void inicializar_laberinto(const char *archivo) {
     FILE *f = fopen(archivo, "r");
     if (f == NULL) {
@@ -78,10 +81,9 @@ void generar_camino_aleatorio(Individuo *ind, int origen, int destino) {
     memset(visitado, 0, sizeof(visitado));
     visitado[origen] = true;
 
-    int pasos = 0; // limite de intentos para no ciclar eternamente
-   
-    while (actual != destino && pasos < 200 * NUM_CELDAS && ind->longitud < MAX_PASOS) {
-        pasos++;
+    int retrocesos = 0; 
+    int choques = 0; // Contador de choques con paredes
+    while (actual != destino && ind->longitud < MAX_PASOS) {
         int vecinos[4];
         int num_vecinos = obtener_vecinos(actual, vecinos);
 
@@ -99,11 +101,12 @@ void generar_camino_aleatorio(Individuo *ind, int origen, int destino) {
             ind->camino[ind->longitud++] = siguiente;
             visitado[siguiente] = true;
             actual = siguiente;
-        /*} else if (ind->longitud > 1) {
+        } else if (ind->longitud > 1 && retrocesos < MAX_RETROCESOS) {
             // Callejon sin salida: retroceder un paso
             ind->longitud--;
             actual = ind->camino[ind->longitud - 1]; 
-            */
+            retrocesos++;
+            choques++;
         } else {
             break; // no hay más opciones
         }
@@ -114,14 +117,15 @@ void generar_camino_aleatorio(Individuo *ind, int origen, int destino) {
 // Calcular la distancia total y fitness
 void evaluar_individuo(Individuo *ind, int destino) {
     ind->distancia_total = 0; // Cada paso cuenta como 1 unidad de distancia
+    ind->choques = 0;         // Inicializar el contador de choques
     int ultimo = ind->camino[ind->longitud - 1]; 
     bool callejon_sin_salida = (ultimo != destino);
     
     if (ultimo != destino) {
-        ind->distancia_total += PENALIZACION_SIN_SALIDA + 10*distancia(ultimo, destino); // Penalización si no llega al destino
+        ind->distancia_total += PENALIZACION_SIN_SALIDA + 10 * distancia(ultimo, destino); // Penalización si no llega al destino
     }
 
-    ind->fitness = 1.0 / (ind->distancia_total + 1.0);
+    ind->fitness = 1.0 / (ind->distancia_total + 1.0 + ind->choques * 10.0); // Penalización por choques
 }
 
 // Selección por Torneo
@@ -255,6 +259,8 @@ int main() {
     }
 
     Individuo mejor_absoluto = poblacion[0];
+    Individuo mejor_epoca = poblacion[0];
+    int gen_sin_mejora = 0;
 
     // 2. Ciclo Evolutivo
     for (int gen = 0; gen < MAX_GENERACIONES; gen++) {
@@ -266,9 +272,26 @@ int main() {
             }
         }
 
-        if (poblacion[idx_mejor_gen].fitness > mejor_absoluto.fitness) {
-            mejor_absoluto = poblacion[idx_mejor_gen];
+        if (poblacion[idx_mejor_gen].fitness > mejor_epoca.fitness) {
+            mejor_epoca = poblacion[idx_mejor_gen];
+            gen_sin_mejora = 0;
+        } else {
+            gen_sin_mejora++;
         }
+
+        if (mejor_epoca.fitness > mejor_absoluto.fitness) {
+            mejor_absoluto = mejor_epoca;
+        }
+
+        if (gen_sin_mejora >= GEN_ESTANCADO) {
+            for (int i = 0; i < TAM_POBLACION; i++) {
+                generar_camino_aleatorio(&poblacion[i], origen, destino);
+                evaluar_individuo(&poblacion[i], destino);
+            }
+            mejor_epoca = poblacion[0];
+            gen_sin_mejora = 0;
+        }
+
 
         // Crear nueva generación
         for (int i = 0; i < TAM_POBLACION; i += 2) {
@@ -281,8 +304,8 @@ int main() {
             mutar(&h1, destino);
             mutar(&h2, destino);
 
-            eliminar_ciclos(&h1, destino);   //nuevo
-            eliminar_ciclos(&h2, destino);   //nuevo
+            eliminar_ciclos(&h1, destino);  
+            eliminar_ciclos(&h2, destino);  
 
             evaluar_individuo(&h1, destino);
             evaluar_individuo(&h2, destino);
@@ -298,15 +321,13 @@ int main() {
             poblacion[i] = nueva_poblacion[i];
         }
 
-        if ((gen + 1) % 1000 == 0 || gen == 0) {
-            printf("Generacion %d - Mejor Distancia: %d Km - Numero de pasos: %d\n", gen + 1, mejor_absoluto.distancia_total, mejor_absoluto.longitud);
-            printf("\n");
+        if ((gen + 1) % 5 == 0 || gen == 0) {
+            printf("Generacion %d - Numero de pasos: %d\n", gen + 1, mejor_absoluto.longitud);
         }
     }
 
     // 3. Mostrar Resultados Finales
     printf("\n================ RESULTADO OPTIMO ================\n");
-    printf("Distancia Total: %d Km\n", mejor_absoluto.distancia_total);
     printf("Ruta Encontrada (%d pasos):\n", mejor_absoluto.longitud);
 
     for (int i = 0; i < mejor_absoluto.longitud; i++) {
