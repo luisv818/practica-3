@@ -10,7 +10,7 @@
 #define NUM_CELDAS (N * N)          // Cada celda libre 
 #define MAX_PASOS 3000
 #define TAM_POBLACION 20
-#define MAX_GENERACIONES 1000
+#define MAX_GENERACIONES 10000
 #define TASA_CRUCE 0.7
 #define TASA_MUTACION 0.3
 #define PENALIZACION_SIN_SALIDA 10000
@@ -240,7 +240,7 @@ int main() {
     srand((unsigned int)time(NULL));
     inicializar_laberinto("laberinto_150x150.csv");
 
-    int origen = 1 * N + 1;       // Coordenada (1,1)
+    int origen = 1 * N + 147;       // Coordenada (1,1)
     int destino = 147 * N + 147;  // Coordenada (147,147)
 
     printf("=== ALGORITMO GENETICO: LABERINTO 150x150 ===\n");
@@ -267,8 +267,12 @@ int main() {
     int gen_sin_mejora = 0;
 
     //ciclo Evolutivo
+    
     for (int gen = 0; gen < MAX_GENERACIONES; gen++) {
         int idx_mejor_gen = 0;
+        if(mejor_absoluto.camino[mejor_absoluto.longitud - 1] == destino && gen_sin_mejora == 30){
+        break;
+        } 
 
         for (int i = 0; i < TAM_POBLACION; i++) {
             if (poblacion[i].fitness > poblacion[idx_mejor_gen].fitness) {
@@ -344,6 +348,16 @@ int main() {
     }
 
     if (f_historia != NULL) fclose(f_historia);
+
+    printf("\n=== RESULTADO FINAL ===\n");
+    printf("Mejor ruta encontrada:\n");
+    for (int i = 0; i < mejor_absoluto.longitud; i++) {
+        int celda = mejor_absoluto.camino[i];
+        printf("(%d,%d)", celda / N, celda % N);
+        if (i < mejor_absoluto.longitud - 1) printf(" -> ");
+    }
+    printf("\nPasos: %d\n", mejor_absoluto.longitud);
+    printf("Distancia/Costo: %d\n", mejor_absoluto.distancia_total);
     printf("\n[+] Historia del laberinto exportada a 'historia_laberinto.txt'\n");
 
     return 0;
