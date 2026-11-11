@@ -125,7 +125,7 @@ print(" 1. La imagen 'mejor_ruta_actual.png' contiene la ruta óptima final alca
 print(f" 2. En la carpeta '{CARPETA_SALIDA}/' se guardaron las imágenes del avance cada {INTERVALO_X} generaciones.")
 
 #Creacion de GIF
-ruta_carpeta = "/workspaces/practica-3/mejores_rutas" 
+ruta_carpeta = r"\Users\andyf\OneDrive\Desktop\practica-3\rutas\mejores_rutas"  # -- CAMBIAR RUTA --
 formatos_validos = (".png", ".jpg", ".jpeg")
 
 archivos = [

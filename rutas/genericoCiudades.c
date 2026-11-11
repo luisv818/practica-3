@@ -277,6 +277,8 @@ int main() {
     // 2. Ciclo Evolutivo
     for (int gen = 0; gen < MAX_GENERACIONES; gen++) {
         int idx_mejor_gen = 0;
+        if(mejor_absoluto.camino[mejor_absoluto.longitud - 1] == destino && gen >= 50)
+        { break; } 
 
         for (int i = 0; i < TAM_POBLACION; i++) {
             if (poblacion[i].fitness > poblacion[idx_mejor_gen].fitness) {
@@ -330,7 +332,6 @@ int main() {
             printf("Generacion %d - Mejor Distancia: %d Km\n", gen + 1, mejor_absoluto.distancia_total);
         }
     }
-
     fclose(f_historia);
     printf("\n[+] Historia evolutiva guardada en 'historia_evolutiva.txt'\n");
 
