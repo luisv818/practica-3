@@ -236,12 +236,23 @@ void eliminar_ciclos(Individuo *ind, int destino) { //Cortar ciclos en el camino
 }
 
 
-int main() {
+int main(int argc, char *argv[]) {
     srand((unsigned int)time(NULL));
     inicializar_laberinto("laberinto_150x150.csv");
 
-    int origen = 1 * N + 147;       // Coordenada (1,1)
-    int destino = 147 * N + 147;  // Coordenada (147,147)
+    int origen_f = 1, origen_c = 147;
+    int destino_f = 147, destino_c = 147;
+
+    // Si Python envía 4 argumentos: fila_origen col_origen fila_destino col_destino
+    if (argc >= 5) {
+        origen_f = atoi(argv[1]);
+        origen_c = atoi(argv[2]);
+        destino_f = atoi(argv[3]);
+        destino_c = atoi(argv[4]);
+    }
+
+    int origen = origen_f * N + origen_c;
+    int destino = destino_f * N + destino_c;
 
     printf("=== ALGORITMO GENETICO: LABERINTO 150x150 ===\n");
     printf("Origen: (%d,%d)\n", origen / N, origen % N);
@@ -249,14 +260,12 @@ int main() {
 
     FILE *f_historia = fopen("historia_laberinto.txt", "w");
     if (f_historia != NULL) {
-        
         fprintf(f_historia, "ORIGEN:%d|DESTINO:%d\n", origen, destino);
     }
 
     Individuo poblacion[TAM_POBLACION];
     Individuo nueva_poblacion[TAM_POBLACION];
 
-    //inicializar Población
     for (int i = 0; i < TAM_POBLACION; i++) {
         generar_camino_aleatorio(&poblacion[i], origen, destino);
         evaluar_individuo(&poblacion[i], destino);
@@ -266,13 +275,11 @@ int main() {
     Individuo mejor_epoca = poblacion[0];
     int gen_sin_mejora = 0;
 
-    //ciclo Evolutivo
-    
     for (int gen = 0; gen < MAX_GENERACIONES; gen++) {
         int idx_mejor_gen = 0;
-        if(mejor_absoluto.camino[mejor_absoluto.longitud - 1] == destino && gen_sin_mejora == 30){
-        break;
-        } 
+        if (mejor_absoluto.camino[mejor_absoluto.longitud - 1] == destino && gen_sin_mejora == 30) {
+            break;
+        }
 
         for (int i = 0; i < TAM_POBLACION; i++) {
             if (poblacion[i].fitness > poblacion[idx_mejor_gen].fitness) {
@@ -291,7 +298,6 @@ int main() {
             mejor_absoluto = mejor_epoca;
         }
 
-        //reinicio de epoca si se estanca la búsqueda local
         if (gen_sin_mejora >= GEN_ESTANCADO) {
             for (int i = 0; i < TAM_POBLACION; i++) {
                 generar_camino_aleatorio(&poblacion[i], origen, destino);
@@ -301,7 +307,6 @@ int main() {
             gen_sin_mejora = 0;
         }
 
-        //EXPORTAR MEJOR RUTA ACTUAL AL ARCHIVO
         if (f_historia != NULL) {
             bool llego = (mejor_absoluto.camino[mejor_absoluto.longitud - 1] == destino);
             fprintf(f_historia, "GEN:%d|LLEGO:%d|PASOS:%d|DIST:%d|CAMINO:", 
@@ -314,7 +319,6 @@ int main() {
             fprintf(f_historia, "\n");
         }
 
-        //operadores geneticos (cruce, mutacion, reparacion)
         for (int i = 0; i < TAM_POBLACION; i += 2) {
             Individuo p1 = seleccion_torneo(poblacion, 3);
             Individuo p2 = seleccion_torneo(poblacion, 3);
@@ -325,8 +329,8 @@ int main() {
             mutar(&h1, destino);
             mutar(&h2, destino);
 
-            eliminar_ciclos(&h1, destino);  
-            eliminar_ciclos(&h2, destino);  
+            eliminar_ciclos(&h1, destino);
+            eliminar_ciclos(&h2, destino);
 
             evaluar_individuo(&h1, destino);
             evaluar_individuo(&h2, destino);
@@ -340,25 +344,9 @@ int main() {
         for (int i = 0; i < TAM_POBLACION; i++) {
             poblacion[i] = nueva_poblacion[i];
         }
-
-        if ((gen + 1) % 100 == 0 || gen == 0) {
-            printf("Generacion %d - Pasos: %d - Distancia/Costo: %d\n", 
-                   gen + 1, mejor_absoluto.longitud, mejor_absoluto.distancia_total);
-        }
     }
 
     if (f_historia != NULL) fclose(f_historia);
-
-    printf("\n=== RESULTADO FINAL ===\n");
-    printf("Mejor ruta encontrada:\n");
-    for (int i = 0; i < mejor_absoluto.longitud; i++) {
-        int celda = mejor_absoluto.camino[i];
-        printf("(%d,%d)", celda / N, celda % N);
-        if (i < mejor_absoluto.longitud - 1) printf(" -> ");
-    }
-    printf("\nPasos: %d\n", mejor_absoluto.longitud);
-    printf("Distancia/Costo: %d\n", mejor_absoluto.distancia_total);
     printf("\n[+] Historia del laberinto exportada a 'historia_laberinto.txt'\n");
-
     return 0;
 }
